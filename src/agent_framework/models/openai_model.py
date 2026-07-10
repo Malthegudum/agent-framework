@@ -1,14 +1,21 @@
+import json
 import os
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any, List, Optional
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - optional dependency
+    def load_dotenv() -> None:
+        return None
 
 from ..language_model import LanguageModel
+from ..message import Message
+from ..model_response import ModelResponse, ToolCall
+from ..tool import Tool
 
 
 class OpenAIModel(LanguageModel):
-    """A lightweight OpenAI adapter that implements the LanguageModel protocol."""
+    """A lightweight OpenAI adapter for framework messages and tools."""
 
     def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", **kwargs: Any) -> None:
         try:
@@ -30,13 +37,70 @@ class OpenAIModel(LanguageModel):
         self.model = model
         self._kwargs = kwargs
 
-    def generate(self, prompt: str) -> str:
+    def _convert_messages(self, messages: List[Message]) -> List[dict]:
+        converted = []
+        for message in messages:
+            payload = {"role": message.role, "content": message.content}
+            if message.role == "tool":
+                payload["tool_call_id"] = message.tool_call_id
+            if message.tool_calls:
+                payload["tool_calls"] = [
+                    {
+                        "id": tool_call.id,
+                        "type": "function",
+                        "function": {
+                            "name": tool_call.name,
+                            "arguments": json.dumps(tool_call.arguments),
+                        },
+                    }
+                    for tool_call in message.tool_calls
+                ]
+            converted.append(payload)
+        return converted
+
+    def _convert_tools(self, tools: Optional[List[Tool]]) -> Optional[List[dict]]:
+        if not tools:
+            return None
+
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.parameters,
+                },
+            }
+            for tool in tools
+        ]
+
+    def _convert_response(self, response: Any) -> ModelResponse:
+        message = response.choices[0].message
+        content = getattr(message, "content", None)
+        tool_calls = []
+        for item in getattr(message, "tool_calls", []) or []:
+            arguments = item.function.arguments
+            if isinstance(arguments, str):
+                arguments = json.loads(arguments)
+            tool_calls.append(
+                ToolCall(
+                    id=item.id,
+                    name=item.function.name,
+                    arguments=arguments,
+                )
+            )
+
+        return ModelResponse(content=content, tool_calls=tool_calls)
+
+    def generate(
+        self,
+        messages: List[Message],
+        tools: Optional[List[Tool]] = None,
+    ) -> ModelResponse:
         response = self._client.chat.completions.create(
             model=self.model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-            ],
+            messages=self._convert_messages(messages),
+            tools=self._convert_tools(tools),
             **self._kwargs,
         )
-        return response.choices[0].message.content.strip()
+        return self._convert_response(response)

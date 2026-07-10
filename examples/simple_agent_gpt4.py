@@ -1,41 +1,52 @@
-"""
-Simple GPT-4 example agent.
-
-Usage:
-  - Set environment variable OPENAI_API_KEY to your OpenAI API key.
-  - From the repo root (Windows pwsh):
-
-    ```powershell
-    $env:OPENAI_API_KEY = '<your-key>'
-    python examples/simple_agent_gpt4.py
-    ```
-
-This script uses the framework helper `Agent.with_model` and selects GPT-4 via provider name.
-"""
+"""Example showing an agent using a Python tool through a language model."""
 
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from agent_framework import Agent
+from agent_framework import Agent, Tool
+from agent_framework.models import OpenAIModel
+
+
+def multiply(a: float, b: float) -> float:
+    return a * b
+
+
+multiply_tool = Tool(
+    name="multiply",
+    description="Multiply two numbers.",
+    func=multiply,
+    parameters={
+        "type": "object",
+        "properties": {
+            "a": {"type": "number"},
+            "b": {"type": "number"},
+        },
+        "required": ["a", "b"],
+    },
+)
 
 
 def main():
-    agent = Agent.with_model(
-        name="GPT4Agent",
-        model_name="gpt-4",
-        system_instructions="You are a helpful assistant. Be concise and friendly.",
+    agent = Agent(
+        name="Calculator",
+        system_instructions=(
+            "You are a calculator. "
+            "Use the available tools for calculations."
+        ),
+        model=OpenAIModel(model="gpt-4"),
+        tools=[multiply_tool],
     )
 
-    user_input = "Hello — introduce yourself in one short paragraph."
+    user_input = "What is 13.7 multiplied by 8.2?"
     if len(sys.argv) > 1:
         user_input = " ".join(sys.argv[1:])
 
     try:
         print(agent.run(user_input))
-    except Exception as e:
-        print(f"Error calling GPT-4: {e}", file=sys.stderr)
+    except Exception as exc:
+        print(f"Error calling GPT-4: {exc}", file=sys.stderr)
         sys.exit(1)
 
 
