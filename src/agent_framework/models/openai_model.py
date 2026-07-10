@@ -17,7 +17,7 @@ from ..tool import Tool
 class OpenAIModel(LanguageModel):
     """A lightweight OpenAI adapter for framework messages and tools."""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", **kwargs: Any) -> None:
+    def __init__(self, model: str, api_key: Optional[str] = None, **kwargs: Any) -> None:
         try:
             from openai import OpenAI
         except ImportError as exc:
@@ -27,10 +27,11 @@ class OpenAIModel(LanguageModel):
             ) from exc
 
         load_dotenv()
+
         resolved_api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not resolved_api_key:
             raise RuntimeError(
-                "OPENAI_API_KEY is not set. Put it in your environment or in a .env file."
+                "OPENAI_API_KEY is not set. Put it in your environment."
             )
 
         self._client = OpenAI(api_key=resolved_api_key)
@@ -97,10 +98,17 @@ class OpenAIModel(LanguageModel):
         messages: List[Message],
         tools: Optional[List[Tool]] = None,
     ) -> ModelResponse:
-        response = self._client.chat.completions.create(
-            model=self.model,
-            messages=self._convert_messages(messages),
-            tools=self._convert_tools(tools),
+        request = {
+            "model": self.model,
+            "messages": self._convert_messages(messages),
             **self._kwargs,
+        }
+
+        converted_tools = self._convert_tools(tools)
+        if converted_tools:
+            request["tools"] = converted_tools
+
+        response = self._client.chat.completions.create(
+            **request
         )
         return self._convert_response(response)

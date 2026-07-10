@@ -1,8 +1,4 @@
-from pathlib import Path
-import sys
 from types import SimpleNamespace
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from agent_framework import Message, ModelResponse, Tool, ToolCall
 from agent_framework.models.openai_model import OpenAIModel
@@ -55,8 +51,9 @@ def test_openai_model_converts_messages_and_tools():
     assert isinstance(result, ModelResponse)
     assert result.content == "Done"
     assert result.tool_calls == []
-    assert client.chat.completions.calls[0]["messages"] == [{"role": "user", "content": "Hello"}]
-    assert client.chat.completions.calls[0]["tools"][0]["function"]["name"] == "multiply"
+    request = client.chat.completions.calls[0]
+    assert request["messages"] == [{"role": "user", "content": "Hello"}]
+    assert request["tools"][0]["function"]["name"] == "multiply"
 
 
 def test_openai_model_converts_tool_calls_and_tool_result_messages():
@@ -105,3 +102,18 @@ def test_openai_model_converts_tool_calls_and_tool_result_messages():
     )
     assert converted_tool_messages[0]["tool_call_id"] == "call-1"
     assert converted_tool_messages[0]["content"] == "6"
+
+
+def test_openai_model_omits_tools_when_none_are_provided():
+    response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="Done", tool_calls=[]))])
+    client = DummyClient(response)
+
+    model = OpenAIModel.__new__(OpenAIModel)
+    model._client = client
+    model.model = "gpt-test"
+    model._kwargs = {}
+
+    model.generate(messages=[Message(role="user", content="Hi")])
+
+    request = client.chat.completions.calls[0]
+    assert "tools" not in request

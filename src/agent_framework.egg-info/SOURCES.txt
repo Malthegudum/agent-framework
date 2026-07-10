@@ -3,7 +3,8 @@ pyproject.toml
 src/agent_framework/__init__.py
 src/agent_framework/agent.py
 src/agent_framework/language_model.py
-src/agent_framework/model_factory.py
+src/agent_framework/message.py
+src/agent_framework/model_response.py
 src/agent_framework/tool.py
 src/agent_framework/workflow.py
 src/agent_framework.egg-info/PKG-INFO
@@ -12,9 +13,8 @@ src/agent_framework.egg-info/dependency_links.txt
 src/agent_framework.egg-info/requires.txt
 src/agent_framework.egg-info/top_level.txt
 src/agent_framework/models/__init__.py
-src/agent_framework/models/mock_model.py
 src/agent_framework/models/openai_model.py
 tests/test_agent.py
-tests/test_model_factory.py
+tests/test_openai_model.py
 tests/test_tool.py
 tests/test_workflow.py

@@ -1,6 +1,6 @@
 # agent-framework
 
-This repository is a intentionally minimal foundation for building reusable AI agents, tools, and workflows in Python.
+This repository is an intentionally minimal foundation for building reusable AI agents, tools, and workflows in Python.
 
 ## Purpose
 
@@ -53,13 +53,15 @@ growth_tool = Tool(
     },
 )
 
+model = OpenAIModel(model="gpt-4")
+
 agent = Agent(
     name="FinancialAnalyst",
     system_instructions=(
         "You are a financial analyst. "
         "Use tools for numerical calculations."
     ),
-    model=OpenAIModel(model="gpt-4"),
+    model=model,
     tools=[growth_tool],
 )
 
@@ -78,6 +80,12 @@ From the repository root, install the package in editable mode:
 pip install -e .
 ```
 
+For OpenAI support, including dotenv loading for local .env files:
+
+```bash
+pip install -e ".[openai]"
+```
+
 ## Running tests
 
 ```bash
@@ -87,5 +95,5 @@ pytest
 ## Running the example
 
 ```bash
-python examples/simple_agent_gpt4.py
+python examples/calculator_agent.py
 ```

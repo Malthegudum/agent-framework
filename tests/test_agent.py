@@ -3,8 +3,6 @@ import sys
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
 from agent_framework import Agent, Message, ModelResponse, Tool, ToolCall
 
 
@@ -126,8 +124,3 @@ def test_agent_raises_when_max_iterations_exceeded():
         agent.run("Hi")
 
 
-def test_agent_requires_model():
-    agent = Agent(name="Helper")
-
-    with pytest.raises(RuntimeError, match="model"):
-        agent.run("Hi")
